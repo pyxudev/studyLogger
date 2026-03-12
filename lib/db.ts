@@ -18,7 +18,7 @@ export async function readDB(): Promise<StudyRecord[]> {
     const blob = blobs.find((b) => b.pathname === DB_BLOB_KEY);
     if (!blob) return [];
 
-    const res = await fetch(blob.url);
+    const res = await fetch(blob.url, { cache: "no-store" });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];

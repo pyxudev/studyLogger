@@ -152,8 +152,8 @@ export default function Home() {
       <header className="app-header">
         <div className="header-inner">
           <span className="header-icon">📚</span>
-          <h1 className="header-title">StudyLog</h1>
-          <span className="header-sub">勉強打刻アプリ</span>
+          <h1 className="header-title">StudyLogger</h1>
+          <span className="header-sub">学習時間を可視化</span>
         </div>
       </header>
 

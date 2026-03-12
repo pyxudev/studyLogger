@@ -1,4 +1,4 @@
-import { put, list, del } from "@vercel/blob";
+import { put, list } from "@vercel/blob";
 
 export interface StudyRecord {
   id: string;
@@ -30,8 +30,7 @@ export async function readDB(): Promise<StudyRecord[]> {
 export async function writeDB(records: StudyRecord[]): Promise<void> {
   await put(DB_BLOB_KEY, JSON.stringify(records), {
     access: "public",
-    addRandomSuffix: false,
-    allowOverwrite: true,
+    addRandomSuffix: false
   });
 }
 

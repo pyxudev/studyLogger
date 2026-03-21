@@ -4,3 +4,4 @@ node_modules/
 .env.local
 .vercel
 CC_README.md
+.DS_Store

@@ -33,6 +33,7 @@ function formatDuration(minutes: number) {
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
+const PAGE_SIZE = 4;
 
 export default function Home() {
   const [name, setName] = useState("");
@@ -44,6 +45,10 @@ export default function Home() {
   const [rankingMonth, setRankingMonth] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
+  const pagedRecords = records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const showMessage = (text: string, type: "success" | "error") => {
     setMessage({ text, type });
@@ -51,13 +56,16 @@ export default function Home() {
   };
 
   const fetchRecords = useCallback(async () => {
-    const res = await fetch("/api/records");
+    const res = await fetch("/api/records", { cache: "no-store" });
     const data = await res.json();
-    if (data.records) setRecords(data.records);
+    if (data.records) {
+      setRecords(data.records);
+      setPage(1);
+    }
   }, []);
 
   const fetchRanking = useCallback(async () => {
-    const res = await fetch("/api/ranking");
+    const res = await fetch("/api/ranking", { cache: "no-store" });
     const data = await res.json();
     if (data.ranking) {
       setRanking(data.ranking);
@@ -205,40 +213,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Records table */}
-        <section className="card records-card">
-          <h2 className="section-title">📋 勉強記録</h2>
-          {records.length === 0 ? (
-            <p className="empty-text">まだ記録がありません</p>
-          ) : (
-            <div className="table-wrap">
-              <table className="records-table">
-                <thead>
-                  <tr>
-                    <th>名前</th>
-                    <th>開始時刻</th>
-                    <th>終了時刻</th>
-                    <th>勉強時間</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {records.map((r) => (
-                    <tr key={r.id}>
-                      <td className="td-name">{r.name}</td>
-                      <td className="td-time">{formatTime(r.startTime)}</td>
-                      <td className="td-time">{r.endTime ? formatTime(r.endTime) : "—"}</td>
-                      <td className="td-duration">
-                        {r.durationMinutes != null ? formatDuration(r.durationMinutes) : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        {/* Ranking */}
+        {/* Ranking - above records */}
         <section className="card ranking-card">
           <h2 className="section-title">🏆 {rankingMonth} 月間ランキング</h2>
           {ranking.length === 0 ? (
@@ -253,6 +228,82 @@ export default function Home() {
                 </li>
               ))}
             </ol>
+          )}
+        </section>
+
+        {/* Records table with pagination */}
+        <section className="card records-card">
+          <div className="records-header">
+            <h2 className="section-title" style={{marginBottom: 0}}>📋 勉強記録</h2>
+            {records.length > 0 && (
+              <span className="records-count">{records.length}件</span>
+            )}
+          </div>
+          {records.length === 0 ? (
+            <p className="empty-text">まだ記録がありません</p>
+          ) : (
+            <>
+              <div className="table-wrap">
+                <table className="records-table">
+                  <thead>
+                    <tr>
+                      <th>名前</th>
+                      <th>開始時刻</th>
+                      <th>終了時刻</th>
+                      <th>勉強時間</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedRecords.map((r) => (
+                      <tr key={r.id}>
+                        <td className="td-name">{r.name}</td>
+                        <td className="td-time">{formatTime(r.startTime)}</td>
+                        <td className="td-time">{r.endTime ? formatTime(r.endTime) : "—"}</td>
+                        <td className="td-duration">
+                          {r.durationMinutes != null ? formatDuration(r.durationMinutes) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <button
+                    className="page-btn"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >‹</button>
+                  <div className="page-nums">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .reduce<(number | "...")[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === "..." ? (
+                          <span key={`e-${i}`} className="page-ellipsis">…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            className={`page-num ${page === p ? "active" : ""}`}
+                            onClick={() => setPage(p as number)}
+                          >{p}</button>
+                        )
+                      )}
+                  </div>
+                  <button
+                    className="page-btn"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >›</button>
+                  <span className="page-info">{page} / {totalPages}ページ</span>
+                </div>
+              )}
+            </>
           )}
         </section>
       </main>
@@ -281,6 +332,12 @@ export default function Home() {
           background: var(--bg);
           color: var(--text);
           min-height: 100vh;
+        }
+        body::before {
+          content: '';
+          position: fixed;
+          inset: 0;
+          z-index: -1;
           background-image: radial-gradient(ellipse at 20% 20%, rgba(108,99,255,0.12) 0%, transparent 60%),
                             radial-gradient(ellipse at 80% 80%, rgba(255,101,132,0.08) 0%, transparent 60%);
         }
@@ -410,6 +467,19 @@ export default function Home() {
         }
         .empty-text { color: var(--text-muted); font-size: 14px; text-align: center; padding: 20px 0; }
 
+        /* Records header */
+        .records-header {
+          display: flex; align-items: center; justify-content: space-between;
+          margin-bottom: 20px;
+        }
+        .records-count {
+          font-size: 12px; color: var(--text-muted);
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          border-radius: 20px;
+          padding: 3px 10px;
+        }
+
         /* Table */
         .records-card {}
         .table-wrap { overflow-x: auto; }
@@ -435,6 +505,39 @@ export default function Home() {
           font-weight: 700; color: var(--accent);
           font-variant-numeric: tabular-nums;
         }
+
+        /* Pagination */
+        .pagination {
+          display: flex; align-items: center; justify-content: center; gap: 6px;
+          margin-top: 20px; padding-top: 16px;
+          border-top: 1px solid var(--border);
+          flex-wrap: wrap;
+        }
+        .page-btn {
+          width: 34px; height: 34px; border-radius: 8px;
+          border: 1px solid var(--border);
+          background: var(--surface2); color: var(--text);
+          cursor: pointer; font-size: 18px; line-height: 1;
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .page-btn:hover:not(:disabled) { background: var(--border); }
+        .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .page-nums { display: flex; align-items: center; gap: 4px; }
+        .page-num {
+          min-width: 34px; height: 34px; border-radius: 8px;
+          border: 1px solid var(--border);
+          background: var(--surface2); color: var(--text-muted);
+          cursor: pointer; font-size: 13px; font-weight: 500;
+          font-family: 'Noto Sans JP', sans-serif;
+          display: flex; align-items: center; justify-content: center;
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
+          padding: 0 8px;
+        }
+        .page-num:hover { background: var(--border); color: var(--text); }
+        .page-num.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .page-ellipsis { color: var(--text-muted); font-size: 13px; padding: 0 2px; user-select: none; }
+        .page-info { font-size: 12px; color: var(--text-muted); margin-left: 4px; }
 
         /* Ranking */
         .ranking-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
@@ -464,6 +567,7 @@ export default function Home() {
           .card { padding: 20px; }
           .btn-row { grid-template-columns: 1fr 1fr; }
           .btn { padding: 14px 10px; font-size: 14px; }
+          .page-info { display: none; }
         }
       `}</style>
     </div>
